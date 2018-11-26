@@ -1,0 +1,192 @@
+# In this all the redirection of urls and the database connection is made
+
+from flask import Flask,render_template,request,flash,redirect,url_for,session
+from flask_bootstrap import Bootstrap
+from flask_wtf import Form
+from passlib.hash import sha256_crypt
+from wtforms import StringField,PasswordField,validators,BooleanField
+import MySQLdb
+from MySQLdb import escape_string as thwart
+import gc
+from datetime import timedelta
+import Twitter_Project.twitter_authentication as auth
+
+
+def connection():
+    conn = MySQLdb.connect(host='hostname', user='root', password='password', db='databasename')
+    curr = conn.cursor()
+    return conn, curr
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'SHASHWAT'
+bootstrap = Bootstrap(app)
+
+
+@app.before_request
+def  make_session_request():
+    session.permanent = True
+    app.permanent_session_lifetime = timedelta(minutes=1)
+
+
+class Register(Form):
+    username = StringField('username',[validators.DataRequired(),validators.length(min = 4 , max = 20 )])
+    email = StringField('Email', [validators.DataRequired(), validators.length(min=4, max=30)])
+    firstName = StringField('First Name', [validators.DataRequired(), validators.length(min=2, max=30)])
+    lastName = StringField('Last Name', [validators.DataRequired(), validators.length(min=2, max=30)])
+    new_password = PasswordField('New Password ',
+                                 [validators.DataRequired(),validators.equal_to('confirm',message  = 'Password Must match' )])
+    confirm = PasswordField('Repeat Password')
+    accept_tos = BooleanField('I accept the terms and conditions ',[validators.DataRequired()])
+
+class Login(Form):
+    username = StringField('username',[validators.DataRequired()])
+    password  = PasswordField('password',[validators.DataRequired()])
+
+
+@app.route('/register',methods = ['POST','GET'])
+def register():
+    form = Register()
+    if request.method == 'POST' and form.validate_on_submit() :
+        username = form.username.data
+        email = form.email.data
+        firstName = form.firstName.data
+        lastName = form.lastName.data
+        password = sha256_crypt.encrypt(str(form.new_password.data))
+        conn ,curr = connection()
+        data = curr.execute("SELECT * FROM twitterRegistration WHERE userName = (%s)",[thwart(username)])
+
+        if int(data) > 0 :
+            return redirect(url_for('register'))
+
+        else :
+            curr.execute("insert into twitterRegistration (username,email,firstName,lastName,password) "
+                         "values(%s,%s,%s,%s,%s)",[thwart(username),thwart(email),thwart(firstName),thwart(lastName),
+                         thwart(password)])
+            conn.commit()
+            gc.collect()
+            session['username'] = username
+            return redirect(url_for('dashboard',name = username))
+    else :
+        return render_template('action.html',form = form)
+
+@app.route('/dashboard',methods =['POST','GET'])
+def dashboard():
+    if request.method =='GET' :
+        name = request.args.get('name')
+        return render_template('dashboard.html',name = name )
+
+@app.route('/fail')
+def failregistration():
+    return render_template('action.html')
+
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+@app.route('/login',methods = ['POST','GET'])
+def login():
+    loginForm = Login()
+    if request.method == 'POST' and loginForm.validate_on_submit() :
+       username = loginForm.username.data
+       password = sha256_crypt.encrypt(loginForm.password.data)
+       conn, curr = connection()
+       curr.execute('Select * from twitterRegistration where username = (%s)',
+                        [thwart(username)])
+       data = curr.fetchone()
+       if data :
+          if sha256_crypt.verify(request.form['password'],data[4]) :
+              session['logged_in'] = True
+              session['username'] = username
+              return redirect(url_for('dashboard',name = username))
+          else :
+             error = 'Invalid Password'
+             return  render_template("login.html", error = error,form = loginForm)
+       else :
+           error = 'You Dont exist ,Please Register'
+           flash(error)
+           return redirect(url_for('register'))
+    else :
+        return render_template('login.html',form = loginForm)
+
+@app.route('/log_out')
+def signout():
+    session.pop('username')
+    session['logged_in'] = False
+    return redirect(url_for('home'))
+
+@app.route('/view_twitter_data',methods = ['POST','GET'])
+def view_twitter_data():
+    followers_count  = auth.followers_count(request.args.get('name'))
+    fav_count = auth.fav_count(request.args.get('name'))
+    user_name = auth.user_name(request.args.get('name'))
+    location = auth.location((request.args.get('name')))
+    friends_count = auth.getting_friend_count(request.args.get('name'))
+    tweets_count = auth.getting_tweets_count(request.args.get('name'))
+    return render_template('view.html', name=request.args.get('name'),followers_count = followers_count ,
+    fav_count=fav_count , user_name = user_name ,location = location,friends_count = friends_count ,
+    tweets_count = tweets_count)
+
+@app.route('/view',methods =  ['POST','GET'])
+def view():
+        return redirect(url_for('view_twitter_data',name = request.args.get('name')))
+
+@app.route('/user_tweets/<name>',methods =['POST','GET'])
+def user_tweets(name):
+    auth.extract_user_tweets(name)
+    text = open('//home/lenovo/PycharmProjects/Web/Twitter_Project/user_timeline_tweet','r')
+    content = text.read()
+    text.close()
+    return render_template('user_tweets.html',name = name,text = content)
+
+@app.route('/mentions/<name>',methods = ['POST','GET'])
+def Mentions(name):
+    boolean =  auth.extract_mentions(name)
+    if boolean == True:
+       text = open('//home/lenovo/PycharmProjects/Web/Twitter_Project/Mentions', 'r')
+       content = text.read()
+       text.close()
+       return render_template('Mentions.html',name= name,text    = content)
+    else :
+        return 'User has made privacy over his followers'
+
+@app.route('/created_at/<name>' , methods = ['POST','GET'])
+def created_at(name):
+    date = auth.account_creation_date(name)
+    return render_template('created_at.html',name = name,date = date)
+
+@app.route('/friends/<name>',methods = ['POST','GET'])
+def friends(name):
+    boolean = auth.list_of_friends(name)
+    if boolean == True :
+        text = open('//home/lenovo/PycharmProjects/Web/Twitter_Project/friends', 'r')
+        content = text.read()
+        return render_template('friends.html',name = name,content = content)
+    else :
+        return 'Not authorized '
+
+@app.route('/followers/<name>',methods = ['POST','GET'])
+def followers(name):
+    boolean = auth.list_of_followers(screen_name  = name)
+    if boolean is True:
+       text  = open('//home/lenovo/PycharmProjects/Web/Twitter_Project/followers', 'r')
+       content = text.read()
+       return render_template('followers.html',name= name,content = content)
+    else :
+        return 'Not Authorised'
+@app.route('/favorites/<name>',methods = ['POST','GET'])
+def favorites(name):
+    return render_template('favorites.html',name= name)
+
+@app.route('/location/<name>',methods = ['POST','GET'])
+def location(name):
+    loc_var = auth.location(name)
+    print(loc_var)
+    return render_template('location.html',name = name,loc = loc_var)
+
+@app.route('/word_cloud/<name>',methods = ['POST','GET'])
+def word_cloud(name):
+    auth.word_cloud()
+    return render_template('word_cloud.html',name = name)
+
+if __name__ =='__main__':
+    app.run(debug = True)
