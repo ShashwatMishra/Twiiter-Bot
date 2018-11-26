@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+{% extends "bootstrap/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% block content %}
+
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+
+     <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#" >Twitter Analytics</a>
+        <b style="font-size:300% ;text-align:center ;color  :blue">
+             You are analyzing {{ name }} data !
+        </b>
+   <div style='float: right; font-size:300%'><a href="/log_out">Sign out </a></div>
+
+      <div class="container-fluid">
+
+      <div class="row">
+        <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+          <div class="sidebar-sticky">
+            <ul class="nav flex-column"></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/user_tweets/{{ name }}" method ="GET">
+                  <span data-feather="file-text"></span>
+                  User Tweets
+                </a>
+                    </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/mentions/{{ name }}" method = "GET">
+                  <span data-feather="file-text"></span>
+                 Mentions
+                </a>
+              </li>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/created_at/{{ name }}" method = "GET">
+                  <span data-feather="file-text"></span>
+                  Created At
+                </a>
+              </li></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/friends/{{ name }}" method = "GET">
+                  <span data-feather="file-text"></span>
+                  Friends
+                </a>
+              </li></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/followers/{{ name }}" method = "GET"
+                  <span data-feather="file-text"></span>
+                  Followers
+                </a>
+              </li>
+              </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/word_cloud/{{ name }}" method = "GET">
+                  <span data-feather="file-text"></span>
+                  Word Cloud
+                </a>
+              </li>
+
+                </ul>
+          </div>
+    </nav>
+          <body >
+       <font color="Green ">
+            {{ content }} </font>
+          </body>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery-slim.min.js"><\/script>')</script>
+    <script src="../../assets/js/vendor/popper.min.js"></script>
+    <script src="../../dist/js/bootstrap.min.js"></script>
+
+{% endblock %}

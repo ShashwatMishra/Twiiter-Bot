@@ -1,0 +1,20 @@
+{% extends "bootstrap/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+<div class = "container" >
+    <form method = "POST" action = "/login" >
+    <dl>
+        {{ wtf.quick_form(form) }}
+        <button type = "submit" class = "btn btn-default">Submit</button>
+    </dl>
+</form>
+</div>
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+ {% if error %}
+    <p class  ="error" ><strong> Error :</strong> <mark>   {{ error }} </mark>   </p>
+{% endif %}
+
+
+{% endblock %}
