@@ -1,0 +1,102 @@
+from Twitter_Project.static_auth   import consumer_key,consumer_key_secret,access_key,access_key_secret
+import tweepy
+import re
+import matplotlib.pyplot as plt
+from wordcloud import wordcloud,STOPWORDS
+
+
+def twitter_auth(consumer_key,consumer_key_secret,access_key,access_key_secret):
+    auth = tweepy.OAuthHandler(consumer_key,consumer_key_secret)
+    auth.set_access_token(access_key,access_key_secret)
+    api = tweepy.API(auth)
+    return api
+
+def extract_user_tweets(screen_name):
+        with open('user_timeline_tweet','w') as file :
+            for tweet in tweepy.Cursor(api.user_timeline,screen_name = screen_name,include_rts = False).items():
+                file.writelines(tweet._json['text'] + '\n')
+
+
+def extract_mentions(screen_name):
+    try :
+        with open('Mentions','w') as file :
+             for tweet in tweepy.Cursor(api.mentions_timeline, screen_name=screen_name).items():
+                file.writelines(tweet._json['text'] + '\n')
+        return True
+    except Exception :
+        return False
+
+
+def getting_tweets_count(screen_name):
+    user = api.get_user(screen_name)
+    tweets_count = user.statuses_count
+    return tweets_count
+
+def getting_friend_count(screen_name):
+    return api.get_user(screen_name)._json['friends_count']
+
+def fav_count(screen_name):
+    user = api.get_user(screen_name)
+    return user._json['favourites_count']
+
+def followers_count(screen_name):
+    user = api.get_user(screen_name)
+    return user._json['followers_count']
+
+def user_name(screen_name):
+    return api.get_user(screen_name).name
+
+def account_creation_date(screen_name):
+    date =  api.get_user(screen_name).created_at
+    return date
+
+def location(screen_name):
+    location = api.get_user(screen_name)._json['geo_enabled']
+    return location
+
+def list_of_followers(screen_name):
+    try :
+        with open('followers', 'w') as file:
+            for follower in tweepy.Cursor(api.followers, screen_name=screen_name).items():
+                file.writelines(follower._json['name'])
+        return True
+    except Exception :
+        return False
+
+def list_of_friends(screen_name):
+    try :
+        with open('friends', 'w') as file:
+            for friend in tweepy.Cursor(api.friends, screen_name=screen_name).items():
+                file.writelines(friend.name)
+        return True
+    except  Exception :
+        return False
+
+
+def word_cloud():
+     with open('user_timeline_tweet','r') as file :
+         content = file.readlines()
+     raw_string  = ''.join(content)
+     no_links = re.sub(r'http\S+', '', raw_string)
+     no_unicode = re.sub(r"\\[a-z][a-z]?[0-9]+", '', no_links)
+     no_special_characters = re.sub('[^A-Za-z ]+', '', no_unicode)
+     words = no_special_characters.split(' ')
+     words = [w for w in words if len(w) > 2 ]
+     words = [w.lower() for w in words]
+     words = [w for w in words if w not in STOPWORDS]
+     final_content = ','.join(words)
+     wc= wordcloud.WordCloud(background_color='white')
+     wc.generate(final_content)
+     f = plt.figure(figsize=(70, 70))
+     plt.imshow(wc, interpolation='bilinear')
+     plt.axis("off")
+     plt.savefig('/home/lenovo/PycharmProjects/Web/Twitter_Project/static/word_cloud.jpg')
+
+
+api = twitter_auth(consumer_key,consumer_key_secret,access_key,access_key_secret)
+
+
+
+
+
+
